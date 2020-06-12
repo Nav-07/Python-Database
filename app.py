@@ -1,9 +1,21 @@
 from Api import Api
-from flask import Flask, jsonify, request
-from User import User
+from flask import jsonify, request
+from flask_sqlalchemy import SQLAlchemy 
 
 # Create the API Objects
 api = Api()
+
+# Create the Database
+database = SQLAlchemy(api.flask_app) 
+
+class User(database.Model):
+	_id = database.Column("id", database.Integer, primary_key=True)
+	name = database.Column(database.String(100))
+	mail = database.Column(database.String(250))
+
+	def __init__(self, name, mail):
+		self.name = name
+		self.mail = mail
 
 # Create the Endpoints
 @api.flask_app.route('/')
@@ -12,13 +24,11 @@ def index():
 
 @api.flask_app.route('/user', methods=['POST'])
 def user():
-    if request.method == 'POST':
-        mail = request.json['mail']
+    name = request.json['name']
+    mail = request.json['mail']
 
-        user = User(mail)
-        api.database.insert_user(user)
-
-        return jsonify({'message': 'record created'}), 201
+    user = User(name, mail)
+    return jsonify({'message': 'record created'}), 201
 
 # Run the Flask App
 if __name__ == '__main__':

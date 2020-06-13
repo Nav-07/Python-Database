@@ -1,35 +1,51 @@
-from Api import Api
-from flask import jsonify, request
-from flask_sqlalchemy import SQLAlchemy 
+from flask import Flask, request, jsonify, flash
+from flask_sqlalchemy import SQLAlchemy
+import os
 
-# Create the API Objects
-api = Api()
+# Create the Flask Object
+app = Flask(__name__)
+app.secret_key = os.environ['SECRET_KEY']
+app.config['JSON_SORT_KEYS'] = False
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URI']
 
-# Create the Database
-database = SQLAlchemy(api.flask_app) 
+db = SQLAlchemy(app)
 
-class User(database.Model):
-	_id = database.Column("id", database.Integer, primary_key=True)
-	name = database.Column(database.String(100))
-	mail = database.Column(database.String(250))
+# The Model
+class User(db.Model):
+	_id = db.Column("id", db.Integer, primary_key=True)
+	name = db.Column(db.String(100))
+	mail = db.Column(db.String(250))
 
-	def __init__(self, name, mail):
-		self.name = name
-		self.mail = mail
+	def json(self):
+		return {
+			"name": self.name,
+			"mail": self.mail
+		}
 
 # Create the Endpoints
-@api.flask_app.route('/')
+@app.route('/')
 def index():
-    return jsonify({'message': 'welcome to user registration service'})
+	return 'User Registration System'
 
-@api.flask_app.route('/user', methods=['POST'])
+@app.route('/user', methods=['POST'])
 def user():
-    name = request.json['name']
-    mail = request.json['mail']
+	name = request.json['name']
+	mail = request.json['mail']
 
-    user = User(name, mail)
-    return jsonify({'message': 'record created'}), 201
+	usr = User(name=name, mail=mail)
+	db.session.add(usr)
+	db.session.commit()
 
-# Run the Flask App
+	return jsonify({'message': 'record created'}), 201
+
+@app.route('/users', methods=['GET'])
+def get_users():
+	users = []
+	for user in User.query.all():
+		users.append(user.json())
+	return jsonify(users)
+
+# Run the flask app
 if __name__ == '__main__':
-    api.run_api()
+	app.run(debug=True, host='0.0.0.0', port=51)
